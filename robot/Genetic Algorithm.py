@@ -1,7 +1,8 @@
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
-generation_num = 1000
+generation_num = 20
 environment_num = 100
 population = 1000
 vmax= 1
@@ -10,13 +11,19 @@ lr = 0.01
 weight_path = None
 
 
-def sense(light,pos_sensor_left,pos_sensor_right):
+def sense(light,pos_sensor_left,pos_sensor_right,angles):
     vector1 = light - pos_sensor_left
     vector2 = light - pos_sensor_right
-    a_left = math.atan2(vector1[1], vector1[0])
-    a_right =math.atan2(vector2[1], vector2[0])
-    # a,b=math.acos(cos_a_left),math.acos(cos_a_right)
+    a_left = (math.atan2(vector1[1], vector1[0]) + 2 * math.pi) % (2 * math.pi) - angles
+    a_right = (math.atan2(vector2[1], vector2[0]) + 2 * math.pi) % (2 * math.pi) - angles
+    a_left =  (a_left+2 * math.pi) % (2 * math.pi)
+    a_right = (a_right + 2 * math.pi) % (2 * math.pi)
+    if(a_left>math.pi):
+        a_left =a_left-2*math.pi
+    if (a_right > math.pi):
+        a_right = a_right - 2 * math.pi
     return a_left, a_right
+
 def sensorPostion(angle,pos):
     x=pos[0]
     y=pos[1]
@@ -36,8 +43,6 @@ def sensorPostion(angle,pos):
     right.append(y_right)
 
     return np.array(left),np.array(right)
-
-
 def softmax(x):
     # exps = np.exp(x-np.max(x))
     exp1 = np.exp(x[0])
@@ -58,10 +63,9 @@ def fowrd(x,gene):
 
 def gene2presatation(gene,position1,position2,angle):
     pos_sensor_left, pos_sensor_right = sensorPostion(angle,position1)
-    a_left, a_right = sense(position2,pos_sensor_left,pos_sensor_right)
+    a_left, a_right = sense(position2,pos_sensor_left,pos_sensor_right,angles=angle)
     x= np.append(a_left, a_right)
-    x= np.append(x,angle)
-    # 加不加激活函数呢
+    # x= np.append(x,angle)
     y=fowrd(x,gene)
     return y
     # 适应情况，应该是用表现型来计算的。。。所以传入的参数是表现型和环境数据，而这个fitness会不会有不同的表现呢
@@ -115,9 +119,17 @@ def fitness(gene,evironment):
         # 角度减少的百分比
     vector1 = position2 - position1
     vector2 = position2 - position3
-    delt_angle1 = math.fabs(math.atan2(vector1[1],vector1[0])-angle)
-    delt_angle2 = math.fabs( math.atan2(vector2[1], vector2[0])-angle2)
-    delt_angle =  (min(delt_angle1,2*math.pi-delt_angle1) - min(delt_angle2,2*math.pi-delt_angle2))/min(delt_angle1,2*math.pi-delt_angle1)
+    #
+    angle1_light = (math.atan2(vector1[1],vector1[0])+2*math.pi)%(2*math.pi)
+    angle2_light = (math.atan2(vector2[1],vector2[0])+2*math.pi)%(2*math.pi)
+    #
+    delt_angle1 = math.fabs(angle1_light-angle)
+    delt_angle2 = math.fabs(angle2_light-angle2)
+    if (delt_angle1>math.pi):
+        delt_angle1 = 2*math.pi - delt_angle1
+    if (delt_angle2>math.pi):
+        delt_angle2 = 2*math.pi - delt_angle2
+    delt_angle = (delt_angle1-delt_angle2)/delt_angle1
     # 两个百分比作为score，但是在前期，两者肯定不在一个数量级上。需要手动调参...
     score = delt_angle
 
@@ -150,7 +162,7 @@ def genesort(generation,environment):
 def mutation(genes):
     # 对基因的进化写一个算法 ，每一个值要增加多少合适呢。。。感觉这个和学习率差不多。。
     # 首先要前1%的不变，后面的都改变。。。
-    random1 = np.random.randn(3, 4)
+    random1 = np.random.randn(2, 4)
     random2 = np.random.randn(4, 2)
     newgenes =[]
     newgenes.append(lr*random1/np.abs(random1)+genes[0])
@@ -175,22 +187,23 @@ def initVironment():
     environment = []
     for i in range(environment_num):
         temp=[]
-        a=np.random.randn(2)
+        a=np.random.rand(2)
         a= np.array([640,480])*a
         temp.append(a)
-        b = np.random.randn(2)
+        b = np.random.rand(2)
         b = np.array([640, 480]) * b
         temp.append(b)
-        c = np.random.randn()
+        c = np.random.rand()
         c = 2*math.pi*c
         temp.append(c)
         environment.append(temp)
     return environment
 
 def save(genes):
-    np.savez('.genes.npz', genes[0][0],genes[0][1])
+    np.savez('genes.npz', genes[0][0],genes[0][1])
 
 if __name__ == '__main__':
+
 
 
 
@@ -199,7 +212,7 @@ if __name__ == '__main__':
         generation = []
         for i in  range(population):
             weitght=[]
-            weight0 = np.random.randn(3, 4)
+            weight0 = np.random.randn(2, 4)
             weitght.append(weight0)
             weight1 = np.random.randn(4, 2)
             weitght.append(weight1)
@@ -210,13 +223,13 @@ if __name__ == '__main__':
         generation.append(loader['arr_0'])
         generation.append(loader['arr_1'])
 
-
-
+    environment = initVironment()
+    temp = []
     #进化
     #是否需要打印fitness的变化情况
     for i in range(generation_num):
-        environment = initVironment()
-        temp = []
+
+
         z=genesort(generation,environment)
         score =np.array([x[1] for x in z])
         generation_sorted = [x[0] for x in z]
@@ -227,4 +240,12 @@ if __name__ == '__main__':
         print(score.mean())
         generation=newpopulation(generation_sorted)
         save(generation)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel('generation')
+    ax.set_ylabel('fitness')
+
+
+    ax.plot(temp)
+    plt.show()
 

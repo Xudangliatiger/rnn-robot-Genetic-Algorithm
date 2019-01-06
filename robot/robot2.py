@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 width, height = 640, 480  # 设置屏幕上模拟窗口的宽度和高度
-weight_path = '.genes.npz'
+weight_path = 'genes.npz'
 
 class robot:
     def __init__(self,vmax,R,L,wheel_width):
@@ -15,6 +15,7 @@ class robot:
         self.L = L
         self.wheel_width = wheel_width
         self.vmax = vmax
+        self.time = 0
         self.pos = [width / 2.0, height/ 2.0] + 10 * np.random.rand(2)
         self.angles = math.pi/2
         self.pos_sensor_right,self.pos_sensor_left = self.sensorPostion(self.angles,self.pos)
@@ -85,21 +86,18 @@ class robot:
     def sense(self,light):
         vector1 = light - self.pos_sensor_left
         vector2 = light - self.pos_sensor_right
-        a_left = math.atan2(vector1[1], vector1[0])
-        a_right = math.atan2(vector2[1], vector2[0])
-        # a,b=math.acos(cos_a_left),math.acos(cos_a_right)
+        a_left = (math.atan2(vector1[1], vector1[0]) + 2 * math.pi) % (2 * math.pi) - self.angles
+        a_right = (math.atan2(vector2[1], vector2[0]) + 2 * math.pi) % (2 * math.pi) - self.angles
+        a_left = (a_left + 2 * math.pi) % (2 * math.pi)
+        a_right = (a_right + 2 * math.pi) % (2 * math.pi)
+        if (a_left > math.pi):
+            a_left = a_left - 2 * math.pi
+        if (a_right > math.pi):
+            a_right = a_right - 2 * math.pi
         return a_left, a_right
 
-
     # 通过角度来求两个轮子的转速
-    def speed(self,light):
 
-        a_left,a_right = self.sense(light)
-
-        v_left = self.vmax*0.5*(1+a_left)
-        v_right = self.vmax*0.5*(1+a_right)
-
-        return  v_left,v_right
 
     def softmax(self,x):
         # exps = np.exp(x-np.max(x))
@@ -130,13 +128,14 @@ class robot:
         gene = self.gene
         a_left, a_right = self.sense(position2)
         x = np.append(a_left, a_right)
-        x = np.append(x,self.angles)
+        # x = np.append(x,self.angles)
         y = self.fowrd(x, gene)
         v_left, v_right = self.vmax * y[0], self.vmax * y[1]
         return v_left, v_right
 
 
     def update(self,light):
+
 
         v_left,v_right=self.gene2presatation(light)
 
@@ -186,10 +185,14 @@ class robot:
         # 更新postion
         if(self.distance(self.pos,light)<=self.L):
             self.pos = self.pos
+            if (self.time != 0):
+                print(self.time)
+                self.time = 0
         else:
             self.pos = self.pos +np.array(delt_pos)
             self.pos_sensor_right, self.pos_sensor_left = self.sensorPostion(self.angles, self.pos)
             self.pos_wheel_right, self.pos_wheel_left = self.wheelPostion(self.angles, self.pos)
+            self.time += 1
 
 
 def tick(frameNum, pts, sensor1, sensor2, wheel1, wheel2, robot, light_s, light):
@@ -217,12 +220,16 @@ def main():
     parser.add_argument('--num-boids', dest='N', required=False)
     args = parser.parse_args()
 
-    vmax = 1
+    vmax = 10
     R=25
     L=50
     wheel_width = 1
-    light = (0,200)
 
+    # light = (600, 480)
+    # light = (0, 480)
+
+    light = (0,0)
+    # light = (600, 0)
     # create boids
     boids = robot(vmax=vmax,R=R,L=L,wheel_width=wheel_width)
 

@@ -14,6 +14,7 @@ class robot:
         self.L = L
         self.wheel_width = wheel_width
         self.vmax = vmax
+        self.time = 0
         self.pos = [width / 2.0, height/ 2.0] + 10 * np.random.rand(2)
         self.angles = math.pi/2
         self.pos_sensor_right,self.pos_sensor_left = self.sensorPostion(self.angles,self.pos)
@@ -144,11 +145,15 @@ class robot:
         delt_pos.append(x)
         delt_pos.append(y)
         # 更新postion
-
-        self.pos = self.pos +np.array(delt_pos)
-        self.pos_sensor_right, self.pos_sensor_left = self.sensorPostion(self.angles, self.pos)
-        self.pos_wheel_right, self.pos_wheel_left = self.wheelPostion(self.angles, self.pos)
-
+        if (self.distance(self.pos, light) <= self.L):
+            if (self.time != 0):
+                print(self.time)
+                self.time = 0
+        else:
+            self.pos = self.pos +np.array(delt_pos)
+            self.pos_sensor_right, self.pos_sensor_left = self.sensorPostion(self.angles, self.pos)
+            self.pos_wheel_right, self.pos_wheel_left = self.wheelPostion(self.angles, self.pos)
+            self.time += 1
 
 
 def tick(frameNum, pts, sensor1, sensor2, wheel1, wheel2, robot, light_s, light):
@@ -178,7 +183,7 @@ def main():
     parser.add_argument('--num-boids', dest='N', required=False)
     args = parser.parse_args()
 
-    vmax = 1
+    vmax = 10
     R=25
     L=50
     wheel_width = 1
